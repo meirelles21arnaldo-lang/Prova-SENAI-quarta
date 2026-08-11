@@ -1,0 +1,13 @@
+BackEnd java e Java com create if not exist são a mesma coisa, a única diferença é realmente no create if not exist, não é muito recomendado porém, o melhor é colocar numa conexão, igual no ConexaoSQLite
+
+
+Apagar o Teste de CRUD no javascript na hora do código, ele define a porta de entrada, O que faz: Junta as 4 informações (quem pediu, qual equipamento, categoria e o problema) e envia para o servidor salvar (Create/Post) ; Consulta o servidor e pede a lista completa de todos os chamados salvos até aquele momento. (Read/Get); Procura o chamado pelo número de identificação (id) e altera o seu estado atual (ex: de "Aberto" para "Concluído"). (Update/Put); Diz ao servidor para apagar definitivamente o chamado que tiver aquele id (Delete)
+
+
+Main(comment) com clientes é o mesmo que o Main(comment) só que com a parte de adicionar /clientes.
+
+Se referindo a Main.Java e /main(coment.java) com clientes.txt (eles têm funções similares, porém execuções diferentes, mas usar o do main(comment).
+
+O primeiro código (/produtos) adota o padrão RESTful moderno, onde uma única rota gerencia diferentes métodos HTTP (GET e POST), lidando com permissões de acesso (CORS). Para cadastrar dados, ele recebe requisições com objetos JSON no corpo da mensagem e os converte automaticamente para objetos Java.
+
+O segundo código (/cadastrar) utiliza uma abordagem baseada em Query Parameters na URL, onde os dados trafegam expostos no próprio link (como ?solicitante=Eric&equipamento=PC05). Isso exige que o servidor faça um processamento manual recortando a string da URL para extrair e decodificar as informações.
