@@ -1,0 +1,85 @@
+//main(coment.java)
+//Aqui o código importa as bibliotecas que serão utilizadas
+
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpExchange;
+import com.google.gson.Gson;
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+//Aqui começa a classe principal 
+public class ServidorApp {
+
+    //Esse é o método estático que não irá retornar nada, porém cria a conexão entre o servidor e o banco de dados do programa
+    public static void main(String[] args) throws Exception {
+        Connection conexao = DriverManager.getConnection("jdbc:sqlite:meubanco.db");
+        Statement stmt = conexao.createStatement();
+
+        //Aqui ele cria a tabela, certificando-se de não criar uma repetida caso outra exista anteriormente
+        //Também define as colunas de ID (chave primária) e de nome
+        stmt.execute("CREATE TABLE IF NOT EXISTS produtos (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT)")
+
+        //Ele instância um objeto da classe do HTTP na porta 8080
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        
+        //Aqui cria-se a "pedaço" do endereço do site (/produtos) que irá direcionar a página para uma subdivisão específica
+        server.createContext("/produtos", exchange -> { //EXCHANGE = faça, execute...
+
+            //Abaixo são dadas as permissões que o servidor terá no banco de dados
+            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*"); //Permissão de acessar o cabeçalho da página
+            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); //Permissão de coletar valores, inserí-los em tabelas e comparar
+            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type"); //Permissões que os clientes têm
+
+            //Caso o objetivo seja usar o OPTIONS, ele vai fazer uma comparação para reconhecer se o campo está vazio retorna um erro
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            //Instancia um objeto gson da Classe Gson
+            Gson gson = new Gson();
+
+            //Caso o objetivo seja usar o FETCH (GET), esse método irá pegar os valores de nome com um SELECT e colocar dentro de uma lista do tipo string(vetor de caracteres)
+            if ("GET".equals(exchange.getRequestMethod())) {
+                List<String> lista = new ArrayList<>();
+                ResultSet rs = stmt.executeQuery("SELECT nome FROM produtos");
+                while (rs.next()) {
+                    lista.add(rs.getString("nome"));
+                }
+                
+                String jsonResposta = gson.toJson(lista);
+                byte[] bytes = jsonResposta.getBytes();
+                
+                exchange.sendResponseHeaders(200, bytes.length);
+                OutputStream os = exchange.getResponseBody();
+                os.write(bytes);
+                os.close();
+
+            } else if ("POST".equals(exchange.getRequestMethod())) {
+                InputStreamReader reader = new InputStreamReader(exchange.getRequestBody());
+                Produto produtoRecebido = gson.fromJson(reader, Produto.class);
+
+                PreparedStatement ps = conexao.prepareStatement("INSERT INTO produtos (nome) VALUES (?)");
+                ps.setString(1, produtoRecebido.nome);
+                ps.executeUpdate();
+
+                String resposta = "Salvo com sucesso!";
+                exchange.sendResponseHeaders(201, resposta.length());
+                OutputStream os = exchange.getResponseBody();
+                os.write(resposta.getBytes());
+                os.close();
+            }
+        });
+
+        server.start();
+        System.out.println("Servidor rodando na porta 8080...");
+    }
+}
+
+class Produto {
+    String nome;
+}

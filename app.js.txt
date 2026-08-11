@@ -1,0 +1,37 @@
+//app.js
+
+async function buscarDoBanco() { /*função assíncrona: está acontecendo o tempo todo, se ela for chamada,
+ ela irá rodar independente do momento da leitura do código pelo computador */
+
+    //Anotação: Sout(Sistem Out PrintIn ou S.out) é um Console.WriteLine
+
+    const resposta = await fetch("http://localhost:8080/produtos"); /*é uma constante chamada resposta e será tipada em tempo execução
+    (em Java Script no precisa pôr tipo de espaço em memória)| AWAIT = ele espera receber a próxima coisa (a PROMISSE do fetch) 
+    para deixar passar para a próxima linha | FETCH = Fazer requisições HTTP (não está sendo especificada porque a requisisção padrão do fetch 
+    é o GET) para retornar a Promisse, então ele precisa de um endereço HTTP para fazer isso, por isso recebe um endereço*/  
+
+    const produtos = await resposta.json();
+
+    const lista = document.getElementById("lista-produtos");
+    lista.innerHTML = "";
+
+    produtos.forEach(nomeProduto => {
+        lista.innerHTML += `<li>${nomeProduto}</li>`;
+    });
+}
+
+async function salvarNoBanco() {
+    const input = document.getElementById("campo-nome");
+    const textoDigitado = input.value;
+
+    const objetoProduto = { nome: textoDigitado };
+
+    await fetch("http://localhost:8080/produtos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(objetoProduto)
+    });
+
+    input.value = "";
+    buscarDoBanco();
+}

@@ -1,0 +1,39 @@
+const URL = "http://localhost:8080/chamados";
+
+// 1. CREATE (POST)[cite: 9]
+async function criar(solicitante, equipamento, categoria, descricao) {
+    const query = `?solicitante=${encodeURIComponent(solicitante)}&equipamento=${encodeURIComponent(equipamento)}&categoria=${encodeURIComponent(categoria)}&descricao=${encodeURIComponent(descricao)}`;
+    const res = await fetch(URL + query, { method: "POST" });
+    console.log("Criar:", await res.json());
+}
+
+// 2. READ (GET)[cite: 13]
+async function listar() {
+    const res = await fetch(URL);
+    console.log("Lista:", await res.json());
+}
+
+// 3. UPDATE (PUT)
+async function atualizar(id, novoStatus) {
+    const query = `?id=${id}&status=${encodeURIComponent(novoStatus)}`;
+    const res = await fetch(URL + query, { method: "PUT" });
+    console.log("Atualizar:", await res.json());
+}
+
+// 4. DELETE (DELETE)
+async function deletar(id) {
+    const query = `?id=${id}`;
+    const res = await fetch(URL + query, { method: "DELETE" });
+    console.log("Deletar:", await res.json());
+}
+
+// === Teste do CRUD ===
+async function rodarTeste() {
+    await criar("Carlos", "PC-01", "Hardware", "Não liga"); // Create[cite: 9]
+    await listar();                                         // Read[cite: 13]
+    await atualizar(1, "Concluído");                        // Update
+    await deletar(1);                                       // Delete
+    await listar();                                         // Read final
+}
+
+rodarTeste();

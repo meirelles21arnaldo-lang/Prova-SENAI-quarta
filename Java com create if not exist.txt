@@ -1,0 +1,134 @@
+import com.sun.net.httpserver.HttpServer;
+import conexao.ConexaoSQLite;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
+public class Main {
+
+    public static void main(String[] args) throws IOException {
+        // 1. Criar o banco e a tabela automaticamente se ainda não existirem
+        inicializarBancoDeDados();
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+
+        // Rota principal da API REST para o CRUD: /chamados
+        server.createContext("/chamados", exchange -> {
+            // Habilita os cabeçalhos de CORS (padrão do projeto)[cite: 6, 7]
+            exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+            exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            String metodo = exchange.getRequestMethod();
+            String query = exchange.getRequestURI().getQuery(); // Ex: id=1&solicitante=Carlos[cite: 7]
+            String resposta = "";
+
+            try (Connection conn = ConexaoSQLite.conectar()) { // Conexão via JDBC
+
+                // 1. CREATE (POST)[cite: 6, 7]
+                if ("POST".equals(metodo)) {
+                    String sql = "INSERT INTO chamados (solicitante, equipamento, categoria, descricao, status) VALUES (?, ?, ?, ?, 'Aberto')";
+                    PreparedStatement stmt = conn.prepareStatement(sql);
+                    stmt.setString(1, pegarParametro(query, "solicitante"));
+                    stmt.setString(2, pegarParametro(query, "equipamento"));
+                    stmt.setString(3, pegarParametro(query, "categoria"));
+                    stmt.setString(4, pegarParametro(query, "descricao"));
+                    stmt.executeUpdate();
+                    resposta = "{\"status\":\"sucesso\",\"mensagem\":\"Chamado criado com sucesso!\"}";
+                }
+
+                // 2. RECOVERY / READ (GET)[cite: 6]
+                else if ("GET".equals(metodo)) {
+                    String sql = "SELECT * FROM chamados";
+                    PreparedStatement stmt = conn.prepareStatement(sql);
+                    ResultSet rs = stmt.executeQuery();
+
+                    StringBuilder json = new StringBuilder("[");
+                    while (rs.next()) {
+                        json.append(String.format("{\"id\":%d,\"solicitante\":\"%s\",\"equipamento\":\"%s\",\"categoria\":\"%s\",\"descricao\":\"%s\",\"status\":\"%s\"},",
+                                rs.getInt("id"),
+                                rs.getString("solicitante"),
+                                rs.getString("equipamento"),
+                                rs.getString("categoria"),
+                                rs.getString("descricao"),
+                                rs.getString("status")));
+                    }
+                    resposta = json.toString().replaceAll(",$", "") + "]"; // Remove a vírgula do final e fecha o array
+                }
+
+                // 3. UPDATE (PUT)
+                else if ("PUT".equals(metodo)) {
+                    String sql = "UPDATE chamados SET status = ? WHERE id = ?";
+                    PreparedStatement stmt = conn.prepareStatement(sql);
+                    stmt.setString(1, pegarParametro(query, "status"));
+                    stmt.setInt(2, Integer.parseInt(pegarParametro(query, "id")));
+                    stmt.executeUpdate();
+                    resposta = "{\"status\":\"sucesso\",\"mensagem\":\"Chamado atualizado com sucesso!\"}";
+                }
+
+                // 4. DELETE (DELETE)
+                else if ("DELETE".equals(metodo)) {
+                    String sql = "DELETE FROM chamados WHERE id = ?";
+                    PreparedStatement stmt = conn.prepareStatement(sql);
+                    stmt.setInt(1, Integer.parseInt(pegarParametro(query, "id")));
+                    stmt.executeUpdate();
+                    resposta = "{\"status\":\"sucesso\",\"mensagem\":\"Chamado deletado com sucesso!\"}";
+                }
+
+            } catch (Exception e) {
+                resposta = "{\"status\":\"erro\",\"mensagem\":\"" + e.getMessage() + "\"}";
+            }
+
+            // Resposta padronizada em JSON[cite: 5, 7]
+            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+            byte[] bytes = resposta.getBytes("UTF-8");
+            exchange.sendResponseHeaders(200, bytes.length);
+            OutputStream os = exchange.getResponseBody();
+            os.write(bytes);
+            os.close();
+        });
+
+        System.out.println("Servidor do SENAI rodando em http://localhost:8080/chamados");
+        server.start();
+    }
+
+    // Método que garante a criação da tabela 'chamados' se ela não existir[cite: 12]
+    private static void inicializarBancoDeDados() {
+        try (Connection conn = ConexaoSQLite.conectar()) { //[cite: 12]
+            String sql = "CREATE TABLE IF NOT EXISTS chamados ("
+                       + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+                       + "solicitante TEXT NOT NULL, "
+                       + "equipamento TEXT NOT NULL, "
+                       + "categoria TEXT NOT NULL, "
+                       + "descricao TEXT NOT NULL, "
+                       + "status TEXT NOT NULL"
+                       + ");"; //[cite: 12]
+            Statement stmt = conn.createStatement();
+            stmt.execute(sql);
+            System.out.println("Banco de dados verificado/criado com sucesso.");
+        } catch (Exception e) {
+            System.out.println("Erro ao inicializar o banco: " + e.getMessage());
+        }
+    }
+
+    // Leitor de parâmetros da URL (padrão do projeto)[cite: 7]
+    private static String pegarParametro(String query, String chave) throws Exception {
+        if (query == null) return "";
+        for (String p : query.split("&")) {
+            String[] par = p.split("=");
+            if (par.length > 1 && par[0].equals(chave)) {
+                return java.net.URLDecoder.decode(par[1], "UTF-8"); //[cite: 7]
+            }
+        }
+        return "";
+    }
+}
