@@ -1,0 +1,144 @@
+import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpExchange;
+import com.google.gson.Gson;
+import java.io.*;
+import java.net.InetSocketAddress;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class ServidorApp {
+
+    public static void main(String[] args) throws Exception {
+        Connection conexao = DriverManager.getConnection("jdbc:sqlite:meubanco.db");
+        Statement stmt = conexao.createStatement();
+
+        // Tabelas do banco de dados
+        stmt.execute("CREATE TABLE IF NOT EXISTS produtos (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT);");
+        stmt.execute("CREATE TABLE IF NOT EXISTS clientes (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT);");
+
+        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        Gson gson = new Gson();
+
+        // ================= ENDPOINT /PRODUTOS =================
+        server.createContext("/produtos", exchange -> {
+            configurarCORS(exchange);
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if ("GET".equals(exchange.getRequestMethod())) {
+                List<String> lista = new ArrayList<>();
+                ResultSet rs = stmt.executeQuery("SELECT nome FROM produtos");
+                while (rs.next()) {
+                    lista.add(rs.getString("nome"));
+                }
+                
+                enviarRespostaJson(exchange, gson.toJson(lista), 200);
+
+            } else if ("POST".equals(exchange.getRequestMethod())) {
+                InputStreamReader reader = new InputStreamReader(exchange.getRequestBody());
+                Produto produtoRecebido = gson.fromJson(reader, Produto.class);
+
+                PreparedStatement ps = conexao.prepareStatement("INSERT INTO produtos (nome) VALUES (?)");
+                ps.setString(1, produtoRecebido.nome);
+                ps.executeUpdate();
+
+                enviarRespostaTexto(exchange, "Produto salvo com sucesso!", 201);
+
+            } else if ("PUT".equals(exchange.getRequestMethod())) {
+        
+                InputStreamReader reader = new InputStreamReader(exchange.getRequestBody());
+                Produto produtoAtualizado = gson.fromJson(reader, Produto.class);
+            
+                PreparedStatement ps = conexao.prepareStatement("UPDATE produtos SET nome = ? WHERE id = ?");
+                ps.setString(1, produtoAtualizado.nome);
+                ps.setInt(2, produtoAtualizado.id);
+                ps.executeUpdate();
+
+                enviarRespostaTexto(exchange, "Produto atualizado com sucesso!", 200);
+
+            }else if ("DELETE".equals(exchange.getRequestMethod())) {
+            
+                String query = exchange.getRequestURI().getQuery();
+                int id = Integer.parseInt(query.split("=")[1]);
+            
+                PreparedStatement ps = conexao.prepareStatement("DELETE FROM produtos WHERE id = ?");
+                ps.setInt(1, id);
+                ps.executeUpdate();
+          
+                enviarRespostaTexto(exchange, "Produto deletado com sucesso!", 200);
+            }
+        });
+
+        // ================= ENDPOINT /CLIENTES =================
+        server.createContext("/clientes", exchange -> {
+            configurarCORS(exchange);
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            if ("GET".equals(exchange.getRequestMethod())) {
+                List<String> lista = new ArrayList<>();
+                ResultSet rs = stmt.executeQuery("SELECT nome FROM clientes");
+                while (rs.next()) {
+                    lista.add(rs.getString("nome"));
+                }
+                
+                enviarRespostaJson(exchange, gson.toJson(lista), 200);
+
+            } else if ("POST".equals(exchange.getRequestMethod())) {
+                InputStreamReader reader = new InputStreamReader(exchange.getRequestBody());
+                Cliente clienteRecebido = gson.fromJson(reader, Cliente.class);
+
+                PreparedStatement ps = conexao.prepareStatement("INSERT INTO clientes (nome) VALUES (?)");
+                ps.setString(1, clienteRecebido.nome);
+                ps.executeUpdate();
+
+                enviarRespostaTexto(exchange, "Cliente salvo com sucesso!", 201);
+            }
+        });
+
+        server.start();
+        System.out.println("Servidor rodando na porta 8080...");
+    }
+
+    // Métodos auxiliares para evitar repetição de código
+    private static void configurarCORS(HttpExchange exchange) {
+        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+    }
+
+    private static void enviarRespostaJson(HttpExchange exchange, String json, int statusCode) throws IOException {
+        byte[] bytes = json.getBytes("UTF-8");
+        exchange.getResponseHeaders().add("Content-Type", "application/json; charset=UTF-8");
+        exchange.sendResponseHeaders(statusCode, bytes.length);
+        OutputStream os = exchange.getResponseBody();
+        os.write(bytes);
+        os.close();
+    }
+
+    private static void enviarRespostaTexto(HttpExchange exchange, String texto, int statusCode) throws IOException {
+        byte[] bytes = texto.getBytes("UTF-8");
+        exchange.sendResponseHeaders(statusCode, bytes.length);
+        OutputStream os = exchange.getResponseBody();
+        os.write(bytes);
+        os.close();
+    }
+}
+
+// Classes de modelo (DTOs)
+class Produto {
+    int id;
+    String nome;
+}
+
+class Cliente {
+    int id;
+    String nome;
+}
