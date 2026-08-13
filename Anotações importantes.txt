@@ -15,6 +15,6 @@ O segundo código (/cadastrar) utiliza uma abordagem baseada em Query Parameters
 
 ConexaoSQLite.java (Banco de Dados): Estabelece a conexão JDBC com o banco de dados local SQLite (banco_senai.db).
 
-Java com Create: O Java é o garçom que atende os pedidos do JavaScript, Usa uma rota única: /chamados.  Olha o tipo de pedido (Verbo HTTP) para decidir o que fazer no banco
+1 Java Principal: O Java é o garçom que atende os pedidos do JavaScript, Usa uma rota única: /chamados.  Olha o tipo de pedido (Verbo HTTP) para decidir o que fazer no banco
 
 Javascript.txt: Usa funções prontas (criar, listar, atualizar, deletar) que chamam o Main.java através da rota /chamados.
