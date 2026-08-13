@@ -11,3 +11,10 @@ Se referindo a Main.Java e /main(coment.java) com clientes.txt (eles têm funç�
 O primeiro código (/produtos) adota o padrão RESTful moderno, onde uma única rota gerencia diferentes métodos HTTP (GET e POST), lidando com permissões de acesso (CORS). Para cadastrar dados, ele recebe requisições com objetos JSON no corpo da mensagem e os converte automaticamente para objetos Java.
 
 O segundo código (/cadastrar) utiliza uma abordagem baseada em Query Parameters na URL, onde os dados trafegam expostos no próprio link (como ?solicitante=Eric&equipamento=PC05). Isso exige que o servidor faça um processamento manual recortando a string da URL para extrair e decodificar as informações.
+
+
+ConexaoSQLite.java (Banco de Dados): Estabelece a conexão JDBC com o banco de dados local SQLite (banco_senai.db).
+
+Java com Create: O Java é o garçom que atende os pedidos do JavaScript, Usa uma rota única: /chamados.  Olha o tipo de pedido (Verbo HTTP) para decidir o que fazer no banco
+
+Javascript.txt: Usa funções prontas (criar, listar, atualizar, deletar) que chamam o Main.java através da rota /chamados.
