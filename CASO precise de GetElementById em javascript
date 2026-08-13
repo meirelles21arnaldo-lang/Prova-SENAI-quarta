@@ -1,0 +1,45 @@
+function enviarDados() {
+    // 1. Captura os valores digitados na tela pelos IDs
+    const solicitante = document.getElementById('solicitante').value;
+    const equipamento = document.getElementById('equipamento').value;
+    const categoria = document.getElementById('categoria').value;
+    const descricao = document.getElementById('descricao').value;
+
+    // Captura a caixinha de alerta que criamos no HTML para dar avisos
+    const caixaMensagem = document.getElementById('mensagemFeedback');
+
+    // 2. VALIDAÇÃO (Garantia de Qualidade): Não permite campos vazios
+    if (!solicitante || !equipamento || !categoria || !descricao) {
+        caixaMensagem.innerText = "⚠️ Erro: Preencha todos os campos do chamado!";
+        caixaMensagem.className = "alert erro"; // Fica vermelho
+        return; // Para a execução aqui e não envia para o Java
+    }
+
+    // 3. CONSTRUÇÃO DA PONTE (Fetch): Prepara a URL para enviar ao Java
+    // Usamos o encodeURIComponent para o caso de o aluno digitar espaços ou acentos
+    const url = `http://localhost:8080/cadastrar?solicitante=${encodeURIComponent(solicitante)}&equipamento=${encodeURIComponent(equipamento)}&categoria=${encodeURIComponent(categoria)}&descricao=${encodeURIComponent(descricao)}`;
+
+    // 4. ENVIO DOS DADOS
+    caixaMensagem.innerText = "Enviando chamado para o servidor...";
+    caixaMensagem.className = "alert";
+
+    fetch(url)
+        .then(resposta => resposta.json()) // Converte a resposta do Java para JSON
+        .then(dados => {
+            if (dados.status === "sucesso") {
+                caixaMensagem.innerText = "✅ " + dados.mensagem;
+                caixaMensagem.className = "alert sucesso"; // Fica verde
+
+                // Limpa o formulário para o próximo chamado
+                document.getElementById('formChamado').reset();
+            } else {
+                caixaMensagem.innerText = "❌ Erro no servidor: " + dados.mensagem;
+                caixaMensagem.className = "alert erro";
+            }
+        })
+        .catch(erro => {
+            caixaMensagem.innerText = "❌ Erro catastrófico: O servidor Java está desligado!";
+            caixaMensagem.className = "alert erro";
+            console.error("Erro na requisição:", erro);
+        });
+}
